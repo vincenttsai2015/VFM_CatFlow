@@ -9,7 +9,7 @@ from rdkit.Chem import Draw
 from tqdm import tqdm
 from train import train_epoch
 from utils import count_parameters, get_loaders, make_molecule, get_smiles, get_model
-from ema import ExponentialMovingAverage
+from torch_ema import ExponentialMovingAverage
 from flow_matching import generate_graphs, eval_and_log
 from rdkit import Chem
 from utils import to_dense
