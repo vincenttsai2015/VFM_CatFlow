@@ -159,7 +159,7 @@ def train_epoch(train, model, loader, optimizer, lr_scheduler, warmup_scheduler,
 
             # ema = ema.to(batch.x.device)
             if ema:
-                ema.update()
+                ema.update(model.parameters())
 
         total_loss += loss.item() * (graph.X.shape[0])
         e_loss += loss_E.item() * (graph.X.shape[0])
