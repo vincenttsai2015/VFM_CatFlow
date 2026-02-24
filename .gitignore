@@ -31,3 +31,4 @@ outputs/
 logs/
 __pycache__/
 models/__pycache__/
+images/
