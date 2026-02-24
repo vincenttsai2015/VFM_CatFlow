@@ -1,0 +1,33 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+./.idea/
+# Ignore all .iml files
+*.iml
+# Ignore all .xml files
+*.xml
+# Ignore all .log files
+*.log
+# Ignore all .tmp files
+*.tmp
+# Ignore all .bak files
+*.bak
+# Ignore all .swp files (Vim swap files)
+*.swp
+# Ignore all .DS_Store files (macOS)
+.DS_Store
+# Ignore all .vscode files (VS Code settings)
+.vscode/
+# Ignore data directory
+data/
+*.pt
+checkpoints/
+outputs/
+logs/
+__pycache__/
+models/__pycache__/
