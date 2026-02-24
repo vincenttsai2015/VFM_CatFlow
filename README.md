@@ -11,7 +11,7 @@ Code for the paper "Variational Flow Matching for Graph Generation"
 * Install PyG related packages: ```(python -m) pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.4.0+cu121.html```
 * Please ensure the synchronization of the versions of *nvcc drivers, Pytorch and PyG*!
 * Install pytorch_warmup, torch_geometric, torchdiffeq and torch-ema: ```(python -m) pip install pytorch_warmup torch_geometric torchdiffeq torch-ema```
-* Install numpy, scipy, pandas, scikit-learn, tqdm, wandb, accelerate, pyemd and dill: ```(python -m) pip install numpy scipy pandas scikit-learn tqdm wandb accelerate pyemd dill```
+* Install numpy, scipy, pandas, scikit-learn, tqdm, wandb, accelerate, pyemd, dill and fcd: ```(python -m) pip install numpy scipy pandas scikit-learn tqdm wandb accelerate pyemd dill fcd```
 * Install orca
   * ```cd evaluation```
   * ```python -m pip install -e .```
