@@ -32,3 +32,5 @@ logs/
 __pycache__/
 models/__pycache__/
 images/
+evaluation/orca
+evaluation/orca.cpython-39-x86_64-linux-gnu.so
