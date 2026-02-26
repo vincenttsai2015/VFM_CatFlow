@@ -270,7 +270,7 @@ def get_tau_sched(tau_sched, tau_max=5, tau_min=0.1):
     return tau_rem
 
 
-def get_model(args, node_feats, edge_feats):
+def get_GT_model(args, node_feats, edge_feats):
     from models.transformer import GraphTransformer
 
     if args.small_model == 1:

@@ -15,8 +15,47 @@ from structural import add_feats
 #     dz_dt = torch.matmul(jacobian_z, du_dt_reshaped)
 #     return z, dz_dt.squeeze()
 
+def train_image_epoch(train, model, loader, optimizer, lr_scheduler, warmup_scheduler, device, max_nodes, mu, sigma, ema, distribution, tau_sched, loss_function, accelerator):
+    total_loss = 0
+    if train:
+        model.train()
+    else:
+        model.eval()
 
-def train_epoch(train, model, loader, optimizer, lr_scheduler, warmup_scheduler, device, max_nodes, mu, sigma, ema, distribution, tau_sched, loss_function, accelerator):
+    for batch in loader:
+        if train:
+            optimizer.zero_grad()
+
+        batch = batch.to(device)
+
+        tau_t = get_tau_sched(tau_sched)
+        t = torch.rand(batch.shape[0], device=batch.x.device)
+        x_1 = batch.float()
+
+        t = t.unsqueeze(-1).unsqueeze(-1)
+        x_t, v_x = conditional_velocity(distribution, x_1, t, tau_t, mu, sigma)
+
+        pred = model(x_t.float(), t.float())
+
+        loss = torch.nn.functional.mse_loss(pred, v_x)
+        
+        if train:
+            # accelerator.backward(loss)
+            loss.backward()
+            max_grad_norm = 1.0
+            # accelerator.clip_grad_norm_(model.parameters(), max_grad_norm)
+            # grad clip
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            optimizer.step()
+            # ema = ema.to(batch.x.device)
+            if ema:
+                ema.update(model.parameters())
+        total_loss += loss.item() * (batch.shape[0])
+        train_loss = total_loss / len(loader.dataset)
+        
+    return model, train_loss
+
+def train_graph_epoch(train, model, loader, optimizer, lr_scheduler, warmup_scheduler, device, max_nodes, mu, sigma, ema, distribution, tau_sched, loss_function, accelerator):
     total_loss, x_loss, e_loss = 0, 0, 0
     if train:
         model.train()
@@ -43,6 +82,9 @@ def train_epoch(train, model, loader, optimizer, lr_scheduler, warmup_scheduler,
         t = torch.rand(graph.X.shape[0], device=batch.x.device)
         tau_t = get_tau_sched(tau_sched)
         x_1, e_1 = graph.X.float(), graph.E.float()
+
+        y_t = torch.squeeze(t).unsqueeze(-1)
+        pred = model(x_t.float(), e_t.float(), y_t.float(), mask)
 
         # for k in range(10):
         #
