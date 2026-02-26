@@ -82,7 +82,7 @@ def to_dense(x, edge_index, edge_attr, batch, max_nodes):
 
 
 def get_loaders(args):
-    if args.task == 'qm9_wo_H':
+    if args.task == 'qm9_wo_H' or args.task == 'qm9':
         max_nodes = 9
         edge_feats = 4
         node_feats = 4
