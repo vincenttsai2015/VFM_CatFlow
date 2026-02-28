@@ -139,7 +139,7 @@ def main(args):
         if (epoch+1) % 100 == 0:
         # if (epoch+1) in [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000]:
             if graph_task:
-                generated_mols = generate_graphs(best_model, 10, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)
+                generated_mols = generate_graphs(best_model, args.generate_size, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)
                 val_mols = eval_and_log(generated_mols, args.log, smiles, device)
 
                 for k in val_mols.keys():
@@ -204,6 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--sigma', type=float, default=0)
     parser.add_argument('--num_layers', type=int, default=6)
     parser.add_argument('--task', type=str, default='qm9_wo_H')
+    parser.add_argument('--generate_size', type=int, default=1000)
 
     parser.add_argument('--ema', type=float, default=0.999)
     parser.add_argument('--distribution', type=str, default='normal')
