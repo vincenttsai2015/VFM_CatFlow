@@ -448,11 +448,11 @@ def eval_and_log(mols, log, smiles, device):
         # print(f'Uniqueness: ', percentage_unique)
         # print('Percentage Novel: ', percetnage_novel)
 
-        print(percentage_valid, percentage_unique, novelty, fcd_score)
+        print(f'Percentage Valid: {percentage_valid}, Percentage Unique: {percentage_unique}, Novelty: {novelty}, FCD Score: {fcd_score}')
 
         s = max(percentage_unique, percentage_valid)
 
-        print(percentage_valid, percentage_unique, s)
+        print(f'Percentage Valid: {percentage_valid}, Percentage Unique: {percentage_unique}, Ablation Score: {s}')
 
         if log:
             wandb.log({
