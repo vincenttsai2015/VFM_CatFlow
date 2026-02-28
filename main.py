@@ -8,7 +8,7 @@ import pytorch_warmup as warmup
 from rdkit.Chem import Draw
 from tqdm import tqdm
 from train import train_graph_epoch, train_image_epoch
-from utils import count_parameters, get_loaders, make_molecule, get_smiles, get_GT_model
+from utils import count_parameters, get_loaders, make_molecule, get_smiles, get_GT_model, get_CNN_model
 from torch_ema import ExponentialMovingAverage
 from flow_matching import generate_graphs, eval_and_log
 from rdkit import Chem
@@ -52,6 +52,10 @@ def main(args):
         smiles = (train_smiles, test_smiles)
 
         model = get_GT_model(args, node_feats, edge_feats)
+        print(f'Number of parameters: {count_parameters(model)}')
+        model.to(device)
+    else:
+        model = get_CNN_model()
         print(f'Number of parameters: {count_parameters(model)}')
         model.to(device)
 
@@ -98,6 +102,28 @@ def main(args):
                     'Val E Loss': val_loss_e,
                     'Learning Rate': optimizer.param_groups[0]['lr']
                 })
+        else:
+            model, train_loss = train_image_epoch(train=True, model=model, loader=train_loader, optimizer=optimizer, lr_scheduler=lr_scheduler,
+                                                                        warmup_scheduler=warmup_scheduler, device=device, max_nodes=max_nodes, mu=args.mu, sigma=args.sigma, ema=ema, 
+                                                                        distribution=args.distribution, tau_sched=args.tau_sched, loss_function=args.loss_function, accelerator=accelerator)
+
+            if args.ema > 0:
+                with ema.average_parameters():
+                    model, val_loss = train_image_epoch(train=False, model=model, loader=train_loader, optimizer=optimizer, lr_scheduler=lr_scheduler,
+                                                                        warmup_scheduler=warmup_scheduler, device=device, max_nodes=max_nodes, mu=args.mu,  sigma=args.sigma, ema=ema, 
+                                                                        distribution=args.distribution, tau_sched=args.tau_sched, loss_function=args.loss_function, accelerator=accelerator)
+            
+            else:
+                model, val_loss = train_image_epoch(train=False, model=model, loader=train_loader, optimizer=optimizer, lr_scheduler=lr_scheduler,
+                                                                        warmup_scheduler=warmup_scheduler, device=device, max_nodes=max_nodes, mu=args.mu,  sigma=args.sigma, ema=ema, 
+                                                                        distribution=args.distribution, tau_sched=args.tau_sched, loss_function=args.loss_function, accelerator=accelerator)
+            
+            if args.log:
+                wandb.log({
+                    'Train Loss': train_loss,
+                    'Val Loss': val_loss,
+                    'Learning Rate': optimizer.param_groups[0]['lr']
+                })
 
         if val_loss < best_loss:
             best_loss = val_loss
@@ -136,6 +162,9 @@ def main(args):
                             wandb.log({f'Valid Molecules {k}': wandb.Image(img)})
                         img.save(f'images/{name}_epoch_val_{time}_{k}.png')
                         img.show()
+            else:
+                generated_images = generate_graphs(best_model, 10, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)
+                eval_and_log(generated_images, args.log, None, device)
 
             #
             #

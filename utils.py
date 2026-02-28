@@ -150,12 +150,12 @@ def get_loaders(args):
         transform = transforms.Compose([transforms.ToTensor()])
         # get loaders with transform
         train_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=True, download=False, transform=transform),
-                                                    batch_size=args.batch_size, shuffle=True)
+                                                    batch_size=args.batch_size, shuffle=True, drop_last=True)
         val_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=False, transform=transform),
-                                                    batch_size=args.batch_size, shuffle=False)
+                                                    batch_size=args.batch_size, shuffle=False, drop_last=True)
 
         test_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=False, transform=transform),
-                                                    batch_size=args.batch_size, shuffle=False)
+                                                    batch_size=args.batch_size, shuffle=False, drop_last=True)
         #
         #
         # for x_1, _ in train_loader:
@@ -269,6 +269,10 @@ def get_tau_sched(tau_sched, tau_max=5, tau_min=0.1):
 
     return tau_rem
 
+def get_CNN_model():
+    from models.cnn import ConvNet
+    model = ConvNet(in_channels=1, ngf=64)
+    return model
 
 def get_GT_model(args, node_feats, edge_feats):
     from models.transformer import GraphTransformer

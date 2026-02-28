@@ -26,16 +26,23 @@ def train_image_epoch(train, model, loader, optimizer, lr_scheduler, warmup_sche
         if train:
             optimizer.zero_grad()
 
-        batch = batch.to(device)
+        # print(f'batch: {batch}')
+        batch_x, batch_y = batch[0], batch[1]
+        batch_x, batch_y = batch_x.to(device), batch_y.to(device) # [B, 1, H, W], [B]
+        print(f'batch_x: {batch_x.shape}, batch_y: {batch_y.shape}')
 
         tau_t = get_tau_sched(tau_sched)
-        t = torch.rand(batch.shape[0], device=batch.x.device)
-        x_1 = batch.float()
+        t = torch.rand(batch_x.shape[0], device=batch_x.device) # [B]
+        x_1 = batch_x.float() # [B, 1, H, W]
+        print(f'x_1: {x_1.shape}, t: {t.shape}')
 
-        t = t.unsqueeze(-1).unsqueeze(-1)
-        x_t, v_x = conditional_velocity(distribution, x_1, t, tau_t, mu, sigma)
+        t = t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) # [B, 1, 1, 1]
+        print(f't: {t.shape}')
+        x_t, v_x = conditional_velocity(distribution, x_1, t, tau_t, mu, sigma) # [B, 1, H, W] , [B, 1, H, W]
+        print(f'x_t: {x_t.shape}, v_x: {v_x.shape}')
 
-        pred = model(x_t.float(), t.float())
+        pred = model(x_t.float(), t.float()) # [B, 1, H, W] 
+        print(f'pred: {pred.shape}')
 
         loss = torch.nn.functional.mse_loss(pred, v_x)
         
@@ -50,8 +57,9 @@ def train_image_epoch(train, model, loader, optimizer, lr_scheduler, warmup_sche
             # ema = ema.to(batch.x.device)
             if ema:
                 ema.update(model.parameters())
-        total_loss += loss.item() * (batch.shape[0])
+        total_loss += loss.item() # * (batch_x.shape[0])
         train_loss = total_loss / len(loader.dataset)
+        print(f'loss: {loss.item()}, train_loss: {train_loss}')
         
     return model, train_loss
 

@@ -31,9 +31,6 @@ def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
         x_0 = torch.randn_like(x_1)
         x_0 = 0.5 * (x_0 + x_0.transpose(1, 2)) if edge else x_0
         diag = torch.eye(x_1.shape[1], dtype=torch.bool).unsqueeze(0).expand(x_1.shape[0], -1, -1)
-        # x_0[diag] = -1
-
-        # x_0 = x_0 + 0.5
         x_t = (1 - t) * x_0 + t * x_1
 
         v_x = x_1 - x_0
@@ -55,39 +52,7 @@ def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
         f = lambda t: torch.softmax((torch.log((1-t) * x_0 + t * x_1) + gumbel_x) / tau_t(t), dim=-1)
         x_t, v_x = torch.autograd.functional.jvp(f, t, torch.ones_like(t))
     elif distribution == 'normal_simplex':
-        # x = torch.randn_like(x_1)
-        # shift = torch.tensor([1 / 3] * 3).reshape(1, 1, 3)  # Shape this to broadcast over B and N
-        # y = x + shift
-        #
-        # normal_vector = torch.tensor([1., 1., 1.], device=y.device, dtype=y.dtype)
-        # normal_vector = normal_vector / normal_vector.norm()  # Normalize
-        #
-        # # Compute the dot product along K dimension
-        # dot_product = torch.sum(y * normal_vector, dim=-1, keepdim=True)
-        #
-        # # Compute projection onto the normal vector
-        # projection = y - (dot_product / 3.0) * normal_vector
-        #
-        # # Adjustment to satisfy the plane equation, considering the shift for the equation = 1
-        # adjustment = (1 - torch.sum(projection, dim=-1, keepdim=True)) / 3
-        # x_0 = projection + adjustment
-        #
-        #
-        # #
-        # # n = torch.ones(x.shape[-1], device=x.device) / torch.sqrt(
-        # #     torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-        # #
-        # # x_dot_n = torch.sum(x * n, dim=-1, keepdim=True)
-        # # n_norm_squared = torch.sum(n * n)
-        # # d = 1 / torch.sqrt(torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-        # # projection = x - ((x_dot_n - d) / n_norm_squared) * n
-        # #
-        # # x_0 = projection
-        # x_0 = 0.5 * (x_0 + x_0.transpose(1, 2)) if edge else x_0
-        # plot x0
-
         x_0 = torch.randn_like(x_1)
-
         v_x = x_1 - x_0
         x_t = t * x_1 + (1 - t) * x_0
 
@@ -105,39 +70,7 @@ def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
         x_0 = 0.5 * (x_0 + x_0.transpose(1, 2)) if edge else samples
 
         x_t = t * x_1 + (1 - t) * x_0
-
-        # noise = torch.randn_like(x_t) * sigma
-        # noise = 0.5 * (noise + noise.transpose(1, 2)) if edge else noise
-        #
-        # noise = hyperplane_proj(noise)
-        #
-        # x_t = x_t + noise
-
         v_x = x_1 - x_0
-
-        #
-        # # scatter
-        # import matplotlib.pyplot as plt
-        # # 3d scatter
-        # from mpl_toolkits.mplot3d import Axes3D
-        # fig = plt.figure()
-        #
-        # ax = fig.add_subplot(111, projection='3d')
-        # points = samples[:150].cpu().detach().numpy()
-        # points = points.reshape(points.shape[0], -1)
-        #
-        # ax.scatter(points[:, 0], points[:, 1], points[:, 2], label='points', color='blue')
-        # ax.scatter([1, 0, 0], [0, 1, 0], [0, 0, 1], label='Simplex Vertices', color='red', s=100)
-        #
-        # plt.legend()
-        # plt.show()
-
-        # plot probability simplex
-        # from mpl_toolkits.mplot3d import Axes3D
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        #
-        #
 
     return x_t, v_x
 
