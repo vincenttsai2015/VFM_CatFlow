@@ -17,4 +17,11 @@ Code for the paper "Variational Flow Matching for Graph Generation"
   * ```python -m pip install -e .```
 
 ## Usage
-```python main.py```
+### MNIST
+```CUDA_VISIBLE_DEVICES=0 python main.py --task mnist --epochs 500 --batch_size 256 --lr 3e-4```
+
+### QM9
+```CUDA_VISIBLE_DEVICES=0 python main.py --task qm9 --epochs 300 --batch_size 1024 --lr 2e-4```
+
+### ZINC
+```CUDA_VISIBLE_DEVICES=0 python main.py --task zinc --epochs 500 --batch_size 1024 --lr 2e-4```

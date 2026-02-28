@@ -51,6 +51,7 @@ def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
         gumbel_x = 0.5 * (gumbel_x + gumbel_x.transpose(1, 2)) if edge else gumbel_x
         f = lambda t: torch.softmax((torch.log((1-t) * x_0 + t * x_1) + gumbel_x) / tau_t(t), dim=-1)
         x_t, v_x = torch.autograd.functional.jvp(f, t, torch.ones_like(t))
+    
     elif distribution == 'normal_simplex':
         x_0 = torch.randn_like(x_1)
         v_x = x_1 - x_0
