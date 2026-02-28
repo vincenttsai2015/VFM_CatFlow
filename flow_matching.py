@@ -376,7 +376,8 @@ def eval_and_log(mols, log, smiles, device):
 
         percentage_valid = valid / len(k_mols)
         percentage_unique = len(unique_set) / len(valid_mols) if len(valid_mols) > 0 else 0
-        # percetnage_novel = len(novel_set) / len(unique_set) if len(unique_set) > 0 else 0
+        percetnage_novel = len(novel_set) / len(unique_set) if len(unique_set) > 0 else 0
+        print(f'For k={k}, Valid: {percentage_valid}, Unique: {percentage_unique}, Novel: {percetnage_novel}')
 
         can_train = [Chem.CanonSmiles(train_smile) for train_smile in train_smiles]
         can_test = [Chem.CanonSmiles(test_smile) for test_smile in test_smiles]
