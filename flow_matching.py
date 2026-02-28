@@ -372,18 +372,16 @@ def eval_and_log(mols, log, smiles, device):
 
         train_smiles, test_smiles = smiles
         unique_set = set([Chem.MolToSmiles(mol) for mol in valid_mols])
-        # novel_set = unique_set - set(train_smiles)
+        novel_set = unique_set - set(train_smiles)
 
         percentage_valid = valid / len(k_mols)
         percentage_unique = len(unique_set) / len(valid_mols) if len(valid_mols) > 0 else 0
         # percetnage_novel = len(novel_set) / len(unique_set) if len(unique_set) > 0 else 0
 
-        # can_train = [Chem.CanonSmiles(train_smile) for train_smile in train_smiles]
-        # can_test = [Chem.CanonSmiles(test_smile) for test_smile in test_smiles]
-        # can_gen = [Chem.CanonSmiles(mol) for mol in unique_mols]
-        # can_novel = set(can_gen) - set(can_test)
-        # from fcd_torch import FCD
-        #
+        can_train = [Chem.CanonSmiles(train_smile) for train_smile in train_smiles]
+        can_test = [Chem.CanonSmiles(test_smile) for test_smile in test_smiles]
+        can_gen = [Chem.CanonSmiles(mol) for mol in unique_mols]
+        can_novel = set(can_gen) - set(can_test)
         unique_list = list(unique_set)
         # test_list = list(test_smiles)
 
