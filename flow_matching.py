@@ -24,8 +24,6 @@ from torch_geometric.utils import sort_edge_index, to_undirected, to_dense_adj, 
 from math import sqrt
 from structural import add_feats
 
-
-
 def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
     if distribution == 'normal':
         x_0 = torch.randn_like(x_1)
@@ -75,7 +73,6 @@ def conditional_velocity(distribution, x_1, t, tau_t, mu, sigma, edge=False):
 
     return x_t, v_x
 
-
 def simplex_proj(seq):
     """Algorithm from https://arxiv.org/abs/1309.1541 Weiran Wang, Miguel Á. Carreira-Perpiñán"""
     Y = seq.reshape(-1, seq.shape[-1])
@@ -91,21 +88,6 @@ def simplex_proj(seq):
 
     X = torch.max(Y - selected_Xtmp, torch.zeros_like(Y))
     return X.view(seq.shape)
-
-
-
-# def hyperplane_proj(seq):
-#     """
-#     Project points onto H^n by ensuring the sum of elements equals 1.
-#     """
-#     Y = seq.reshape(-1, seq.shape[-1])
-#     N, K = Y.shape
-#     # Calculate the sum of elements for each vector and the correction needed
-#     total_sum = torch.sum(Y, dim=-1, keepdim=True)
-#     correction = (1 - total_sum) / K
-#     # Apply correction to each element
-#     X = Y + correction
-#     return X.view(seq.shape)
 
 def hyperplane_proj(seq):
     import torch
@@ -127,6 +109,21 @@ def hyperplane_proj(seq):
     X = Y + torch.ger(correction, n)
     return X.view(seq.shape)
 
+@torch.no_grad()
+def generate_mnist_images_odeint(model, num_images, device, steps=2, method="rk4"):
+    model.eval()
+
+    x0 = torch.randn(num_images, 1, 28, 28, device=device)
+
+    # odeint 的 t 是「時間點列表」，不是 step_size；點越多越細
+    # 例如 0->1 切 101 個點，最後取 [-1]
+    t = torch.linspace(0.0, 1.0, 101, device=device)
+
+    func = ODEFuncImage(model, batch_size=num_images)
+    sol = odeint(func, y0=x0, t=t, method=method)   # sol: [T,B,1,28,28]
+    x1 = sol[-1]
+
+    return x1
 
 def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, name, mu, distribution, tau_sched, loss_function, counter, small_model):
     mols_per_b = num_mols // 10
@@ -136,11 +133,6 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
         x_params, e_params = torch.zeros(mols_per_b, max_nodes, node_feats), torch.zeros(mols_per_b, max_nodes, max_nodes, edge_feats)
 
         if distribution == 'normal':
-            # x_0 = torch.randn_like(x_1)
-            # x_0 = 0.5 * (x_0 + x_0.transpose(1, 2)) if edge else x_0
-            # x_t = (1 - t) * x_0 + t * x_1
-            # v_x = x_1 - x_0
-
             x_t = torch.randn_like(x_params)
             e_t = torch.randn_like(e_params)
             e_t = (e_t + torch.transpose(e_t, 1, 2)) / 2
@@ -156,6 +148,7 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
 
             gumbel = None
             tau_t = None 
+        
         elif distribution == 'simplex':
             gumbel_x = -torch.log(-torch.log(torch.rand_like(x_params.float()) + 1e-10) + 1e-10)
             gumbel_e = -torch.log(-torch.log(torch.rand_like(e_params.float()) + 1e-10) + 1e-10)
@@ -178,62 +171,6 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
             gumbel = (gumbel_x, gumbel_e)
 
         elif distribution == 'normal_simplex':
-            # x = torch.randn_like(x_params)
-            # shift = torch.tensor([1 / 4] * 4).reshape(1, 1, 4)  # Shape this to broadcast over B and N
-            # y = x + shift
-            #
-            # normal_vector = torch.tensor([1., 1., 1., 1.], device=y.device, dtype=y.dtype)
-            # normal_vector = normal_vector / normal_vector.norm()  # Normalize
-            #
-            # # Compute the dot product along K dimension
-            # dot_product = torch.sum(y * normal_vector, dim=-1, keepdim=True)
-            #
-            # # Compute projection onto the normal vector
-            # projection = y - (dot_product / 4.0) * normal_vector
-            #
-            # # Adjustment to satisfy the plane equation, considering the shift for the equation = 1
-            # adjustment = (1 - torch.sum(projection, dim=-1, keepdim=True)) / 4
-            # x_0 = projection + adjustment
-
-            #
-            # n = torch.ones(x.shape[-1], device=x.device) / torch.sqrt(
-            #     torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-            #
-            # x_dot_n = torch.sum(x * n, dim=-1, keepdim=True)
-            # n_norm_squared = torch.sum(n * n)
-            # d = 1 / torch.sqrt(torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-            # projection = x - ((x_dot_n - d) / n_norm_squared) * n
-            #
-            # x_0 = projection
-
-            # x = torch.randn_like(e_params)
-            # shift = torch.tensor([1 / 4] * 4).reshape(1, 1, 4)  # Shape this to broadcast over B and N
-            # y = x + shift
-            #
-            # normal_vector = torch.tensor([1., 1., 1., 1.], device=y.device, dtype=y.dtype)
-            # normal_vector = normal_vector / normal_vector.norm()  # Normalize
-            #
-            # # Compute the dot product along K dimension
-            # dot_product = torch.sum(y * normal_vector, dim=-1, keepdim=True)
-            #
-            # # Compute projection onto the normal vector
-            # projection = y - (dot_product / 4.0) * normal_vector
-            #
-            # # Adjustment to satisfy the plane equation, considering the shift for the equation = 1
-            # adjustment = (1 - torch.sum(projection, dim=-1, keepdim=True)) / 4
-            # e_0 = projection + adjustment
-
-            #
-            # n = torch.ones(x.shape[-1], device=x.device) / torch.sqrt(
-            #     torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-            #
-            # x_dot_n = torch.sum(x * n, dim=-1, keepdim=True)
-            # n_norm_squared = torch.sum(n * n)
-            # d = 1 / torch.sqrt(torch.tensor(x.shape[-1], device=x.device, dtype=x.dtype))
-            # projection = x - ((x_dot_n - d) / n_norm_squared) * n
-            #
-            # x_0 = projection
-
             x_0, e_0 = torch.randn(mols_per_b, max_nodes, node_feats), torch.randn(mols_per_b, max_nodes, max_nodes, edge_feats)
             e_0 = 0.5 * (e_0 + e_0.transpose(1, 2))
 
@@ -244,38 +181,14 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
             tau_t = None
 
         elif distribution == 'normal_projected':
-            # M = torch.ones(x_params.shape[-1], device=x_params.device) / x_params.shape[-1]
-            # x_t = torch.randn_like(x_params) + M
-            # e_t = torch.randn_like(e_params) + M
-            # e_t = 0.5 * (e_t + e_t.transpose(1, 2))
-            # x_t, e_t = hyperplane_proj(x_t), hyperplane_proj(e_t)
-            # x_t, e_t = x_t.to(device), e_t.to(device)
-
-            # M = torch.ones(x_1.shape[-1], device=x_1.device) / x_1.shape[-1]
-            #
-            # # Sample points around M for all samples at once
-            # samples = torch.randn_like(x_1) + M
-            # samples = 0.5 * (samples + samples.transpose(1, 2)) if edge else samples
-            #
-            # x_0 = hyperplane_proj(samples)
-
             M = torch.ones(x_params.shape[-1], device=x_params.device) / x_params.shape[-1]
             samples_x = torch.randn_like(x_params) + M
             x_t = hyperplane_proj(samples_x)
-            # noise = torch.randn_like(x_0) * 1e-6
-            # noise = hyperplane_proj(noise)
-            # x_t = x_0 + noise
 
             M = torch.ones(e_params.shape[-1], device=x_params.device) / x_params.shape[-1]
             samples_e = torch.randn_like(e_params) + M
             e_t = hyperplane_proj(samples_e)
             e_t = 0.5 * (e_t + e_t.transpose(1, 2))
-
-            # noise = torch.randn_like(e_0) * 1e-6
-            # noise = 0.5 * (noise + noise.transpose(1, 2))
-            # noise = hyperplane_proj(noise)
-            #
-            # e_t = e_0 + noise
 
             x_t, e_t = x_t.to(device), e_t.to(device)
 
@@ -286,14 +199,12 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
         e_t = e_t.to(device)
 
         # sample size
-
         probs = counter / counter.sum()
         # torch version of: samples = np.random.choice(np.arange(1, max_nodes + 2), p=probs, size=x_params.shape[0])
         samples = torch.multinomial(probs, x_params.shape[0], replacement=True)
 
         result_tensor = torch.stack([
-            torch.cat([torch.ones(sample, dtype=torch.bool), torch.zeros(max_nodes - sample, dtype=torch.bool)])
-            for sample in samples
+            torch.cat([torch.ones(sample, dtype=torch.bool), torch.zeros(max_nodes - sample, dtype=torch.bool)]) for sample in samples
         ])
         # PlaceHolder(X=X, E=E, y=None), node_mask
         from utils import PlaceHolder
@@ -303,16 +214,10 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
         graph.mask(result_tensor)
         # graph = graph.mask(mask)
         x_t, e_t = graph.X.float(), graph.E.float()
-        # else:
-        #     result_tensor = None
-        #     result_tensor = torch.ones(size=(x_t.shape[0], max_nodes)).bool().to(x_t.device)
-        # t = torch.tensor([0.05, 0.95])
         if small_model == 1:
             t = torch.tensor([0.0, 1.0])
         else:
             t = torch.tensor([0.0, 0.95])
-        # t = torch.linspace(0.0, 1.0, 5)v
-
 
         t = t.to(device)
         x_flat, e_flat = x_t.flatten().unsqueeze(-1), e_t.flatten().unsqueeze(-1)
@@ -323,20 +228,11 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
         cut_off = x_flat.shape[0]
 
         size_x, size_e = x_t.shape, e_t.shape
-        odeNet = ODEFunc(model, size_x, size_e, cut_off, max_nodes, distribution, tau_t, loss_function, mu, gumbel, result_tensor)
-        # solution = odeint(odeNet, y0=y_in, t=t)
-        # solution = odeint(odeNet, y0=y_in, t=t, method='euler', options={'step_size': 0.01})[-1]
-
-        # solution = odeint(odeNet, y0=y_in, t=t, method='euler', options={'step_size': 0.01})[-1]
-
-        # solution = odeint(odeNet, y0=y_in, t=t, method='euler', options={'step_size': (1/100)})[-1]
-
-        # solution = odeint(odeNet, y0=y_in, t=t, atol=1e-5, rtol=1e-5)[-1]
+        odeNet = ODEFuncGraph(model, size_x, size_e, cut_off, max_nodes, distribution, tau_t, loss_function, mu, gumbel, result_tensor)
 
         all_all_mols = defaultdict(list)
 
         for k in [100]:
-            # solution = odeint(odeNet, y0=y_in, t=t, method='euler', options={'step_size': (1/k)})[-1]
             if small_model == 1:
                 solution = odeint(odeNet, y0=y_in, t=t, method='euler', options={'step_size': (1/k)})[-1]
             else:
@@ -351,7 +247,7 @@ def generate_graphs(model, num_mols, node_feats, edge_feats, max_nodes, device, 
 
     return all_all_mols
 
-def eval_and_log(mols, log, smiles, device):
+def eval_and_log_molecules(mols, log, smiles, device):
     all_valid_mols, all_unique_mols, all_novel_mols = defaultdict(list), defaultdict(list), defaultdict(list)
 
     for k, k_mols in mols.items():
@@ -432,25 +328,8 @@ def eval_and_log(mols, log, smiles, device):
             can_gen = []
             can_novel = []
 
-        # if len(unique_list) > 0:
-        #     try:
-        #         fcd = FCD(device=device)
-        #         print(fcd(test_list, unique_list))
-        #     except:
-        #         print("Couldn't compute")
-        #         pass
-        # else:
-        #     print('No valid molecules')
-
-        # can_novel = len(can_novel) / len(can_gen) if len(can_gen) > 0 else 0
-        # print(f'Validity: ', percentage_valid)
-        # print(f'Uniqueness: ', percentage_unique)
-        # print('Percentage Novel: ', percetnage_novel)
-
         print(f'Percentage Valid: {percentage_valid}, Percentage Unique: {percentage_unique}, Novelty: {novelty}, FCD Score: {fcd_score}')
-
         s = max(percentage_unique, percentage_valid)
-
         print(f'Percentage Valid: {percentage_valid}, Percentage Unique: {percentage_unique}, Ablation Score: {s}')
 
         if log:
@@ -465,75 +344,195 @@ def eval_and_log(mols, log, smiles, device):
         all_valid_mols[k] = valid_mols
 
     return all_valid_mols
-# class ODEFunc(torch.nn.Module):
-#     def __init__(self, neural_network, size_x, size_e, cut_off, max_nodes, distribution, tau_t, loss_function, mu, gumbel):
-#         super(ODEFunc, self).__init__()
-#         self.neural_network = neural_network
-#         self.size_x = size_x
-#         self.size_e = size_e
-#         self.cut_off = cut_off
-#         self.max_nodes = max_nodes
-#         self.distribution = distribution
-#         self.tau_t = tau_t
-#         self.loss_function = loss_function
-#         self.mu = mu
-#         self.gumbel = gumbel
-#
-#     def forward(self, t, y):
-#
-#
-#         x, e = y[:self.cut_off], y[self.cut_off:]
-#         x_t = x.reshape(self.size_x)
-#         e_t = e.reshape(self.size_e)
-#         diag = torch.eye(x_t.shape[1], dtype=torch.bool).unsqueeze(0).expand(x_t.shape[0], -1, -1)
-#
-#         e_t[diag] = 0
-#         assert not torch.isnan(e_t).any()
-#         y_t = torch.ones(size=(x_t.shape[0], 1)).to(x_t.device) * t
-#         mask = torch.ones(size=(x_t.shape[0], self.max_nodes)).bool().to(x_t.device)
-#
-#         e_t_r, x_t_r = torch.argmax(e_t, dim=-1), torch.argmax(x_t, dim=-1)
-#         # e_t_r, x_t_r = torch.nn.functional.one_hot(e_t_r, e_t.size(-1)), torch.nn.functional.one_hot(x_t_r, x_t.size(-1))
-#
-#         k = t.repeat(x_t.shape[0], 1, 1, 1)
-#         # x_t_in, y_t = add_feats(x_t, e_t_r, k, mask, t.device)
-#         pred = self.neural_network(x_t, e_t, y_t, mask)
-#
-#         print(t)
-#         if self.loss_function == 'mse':
-#             v_x, v_e = pred.X, pred.E
-#         else:
-#             x_1, e_1 = pred.X, pred.E
-#             x_1, e_1 = torch.softmax(x_1, dim=-1), torch.softmax(e_1, dim=-1)
-#             # if t < 0 or t > 1:
-#             #     v_x, v_e = torch.zeros_like(x_1), torch.zeros_like(e_1)
-#             # else:
-#
-#             if self.distribution == 'normal' or self.distribution == 'normal_simplex':
-#                     v_x = (x_1 - x_t) / (1 - t)
-#                     v_e = (e_1 - e_t) / (1 - t)
-#
-#             if self.distribution == 'simplex':
-#                 x_0, e_0 = (1 / 4) * torch.ones_like(x_1), (1 / 4) * torch.ones_like(e_1)
-#                 gumbel_x = torch.log(x_t / ((1-t) * x_0 + t * x_1) + 1e-8)
-#                 gumbel_e = torch.log(e_t / ((1-t) * e_0 + t * e_1) + 1e-8)
-#
-#                 f_x = lambda t: torch.softmax((torch.log(t * x_1 + (1-t) * x_0 + 1e-8) + gumbel_x) / 1, dim=-1)
-#                 _, v_x = torch.autograd.functional.jvp(f_x, t, torch.ones_like(t))
-#
-#                 f_e = lambda t: torch.softmax((torch.log(t * e_1 + (1-t) * e_0 + 1e-8) + gumbel_e), dim=-1)
-#                 _, v_e = torch.autograd.functional.jvp(f_e, t, torch.ones_like(t))
-#
-#
-#         # e_t[diag], v_e[diag] = 0, 0
-#
-#         v = torch.cat([v_x.flatten().unsqueeze(-1), v_e.flatten().unsqueeze(-1)], dim=0)
-#         return v
+
+# ---- FID ----
+def _to_uint8_3ch(x01: torch.Tensor) -> torch.Tensor:
+    """
+    x01: float tensor in [0,1], shape [B,1,H,W] or [B,3,H,W]
+    return: uint8 tensor in [0,255], shape [B,3,H,W]
+    """
+    if x01.ndim != 4:
+        raise ValueError(f"Expect [B,C,H,W], got {x01.shape}")
+    if x01.size(1) == 1:
+        x01 = x01.repeat(1, 3, 1, 1)
+    x01 = x01.clamp(0, 1)
+    x255 = (x01 * 255.0).round().to(torch.uint8)
+    return x255
 
 
-class ODEFunc(torch.nn.Module):
+@torch.no_grad()
+def compute_fid_torchmetrics(
+    x_gen_01: torch.Tensor,      # [N,1,28,28] float in [0,1]
+    test_loader,
+    device,
+    max_real: int = 10_000,
+    max_fake: int = 10_000,
+):
+    """
+    用 torchmetrics 的 FrechetInceptionDistance 計算 FID。
+    注意：torchmetrics 的 FID 用 Inception，通常預期輸入 >= 3x299x299。
+    torchmetrics 內部會 resize，但 MNIST 仍可用（只是不如在自然影像上那麼標準）。
+    """
+    try:
+        from torchmetrics.image.fid import FrechetInceptionDistance
+    except Exception as e:
+        raise ImportError(
+            "需要 torchmetrics：pip install torchmetrics"
+        ) from e
+
+    fid = FrechetInceptionDistance(feature=2048).to(device)
+
+    # real
+    seen = 0
+    for x, _ in test_loader:
+        x = x.to(device).float()
+        # 你資料如果是 Normalize 過的，請先反正規化到 [0,1]
+        x01 = x
+        x_u8 = _to_uint8_3ch(x01)
+        fid.update(x_u8, real=True)
+        seen += x_u8.size(0)
+        if seen >= max_real:
+            break
+
+    # fake
+    x_gen_01 = x_gen_01.to(device).float()
+    if x_gen_01.size(0) > max_fake:
+        x_gen_01 = x_gen_01[:max_fake]
+    fid.update(_to_uint8_3ch(x_gen_01), real=False)
+
+    return float(fid.compute().item())
+
+
+# ---- NLL for CNF via divergence integral ----
+def _hutch_divergence(v, x, eps):
+    """
+    v: vector field v(x) same shape as x
+    div v ≈ eps^T J_v eps
+    """
+    # (v * eps).sum() 的梯度 wrt x = J_v^T eps
+    inner = (v * eps).sum()
+    grad = torch.autograd.grad(inner, x, create_graph=True)[0]
+    div_est = (grad * eps).sum(dim=(1,2,3))  # per-sample
+    return div_est
+
+
+class CNFLogProbODE(torch.nn.Module):
+    """
+    解 (x, logp) 的增廣 ODE：
+      dx/dt = v_theta(x,t)
+      dlogp/dt = -div v_theta(x,t)
+    """
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, t, state):
+        x, logp = state  # x: [B,1,28,28], logp: [B]
+        x = x.requires_grad_(True)
+
+        t_in = t.view(1,1,1,1).expand(x.size(0),1,1,1)
+        v = self.model(x, t_in)
+
+        eps = torch.randn_like(x)
+        div = _hutch_divergence(v, x, eps)     # [B]
+        dlogp = -div                           # [B]
+
+        return v, dlogp
+
+
+@torch.no_grad()
+def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_steps: int = 101, method: str = "rk4"):
+    """
+    估計 test data 的 NLL（平均每張圖的 negative log-likelihood，單位 nats）。
+    做法：把 x1(test image) 從 t=1 反向積分到 t=0 得到 x0，並積分 divergence。
+      log p(x1) = log p0(x0) - ∫_0^1 div v dt
+    反向積分：t: 1 -> 0
+    """
+    from torchdiffeq import odeint
+
+    model.eval()
+    ode_func = CNFLogProbODE(model).to(device)
+
+    # 反向時間
+    t = torch.linspace(1.0, 0.0, ode_steps, device=device)
+
+    total_nll = 0.0
+    total_n = 0
+
+    for bi, (x1, _) in enumerate(test_loader):
+        if bi >= max_batches:
+            break
+
+        x1 = x1.to(device).float()
+        B = x1.size(0)
+
+        # 如果你的 test x1 不是在模型生成空間（例如 Normalize 過），這裡要一致
+        # x1_model = (x1 - mean)/std 或 x1_model = x1*2-1 等
+        x1_model = x1
+
+        logp1_init = torch.zeros(B, device=device)
+
+        # 需要梯度來算 divergence，所以這段不能用 @torch.no_grad()
+        # 我們在外層 no_grad 了，這裡局部開啟 grad：
+        with torch.enable_grad():
+            x0, logp0 = odeint(ode_func, (x1_model, logp1_init), t, method=method)
+            x0 = x0[-1]      # [B,1,28,28]
+            logp0 = logp0[-1]  # [B]
+
+            # base log p0 for standard Normal
+            # log N(x0;0,I) = -0.5*(||x0||^2 + D*log(2pi))
+            D = x0[0].numel()
+            log_base = -0.5 * (x0.view(B, -1).pow(2).sum(dim=1) + D * torch.log(torch.tensor(2.0 * torch.pi, device=device)))
+
+            # log p(x1) = log_base + logp0  (因為 logp 在 ODE 裡累積的是 -∫div)
+            logp_x1 = log_base + logp0
+            nll = -logp_x1  # [B]
+
+        total_nll += float(nll.sum().item())
+        total_n += B
+
+    return total_nll / max(total_n, 1)
+
+def eval_and_log_images(gen_images, model, test_loader,
+                        log=False, device="cuda", wandb_run=None, # 你若用 wandb，可傳 wandb
+                        max_real=10_000, max_fake=10_000, nll_max_batches=50):
+    """
+    # gen_images: dict: k -> generated images tensor [N,1,28,28] in [0,1] (建議)
+    回傳：results dict, 以及每個 k 對應的 fid/nll
+    """
+    results = {}
+    # NLL 通常跟 k 無關（NLL 是 model 對 test 的 likelihood），所以算一次即可
+    nll = estimate_nll_on_test(model, test_loader, device=device, max_batches=nll_max_batches)
+    print(f"[NLL] test NLL (nats/image): {nll:.4f}")
+
+    for k, x_gen in gen_images.items():
+        fid = compute_fid_torchmetrics(x_gen_01=x_gen, test_loader=test_loader, device=device, max_real=max_real, max_fake=max_fake)
+        print(f"For k={k}, FID: {fid:.4f}, NLL(test): {nll:.4f}")
+
+        if log and wandb_run is not None:
+            wandb_run.log({
+                f"FID/k={k}": fid,
+                "NLL_test": nll,
+            })
+
+        results[k] = {"FID": fid, "NLL_test": nll}
+
+    return results
+
+class ODEFuncImage(torch.nn.Module):
+    def __init__(self, model, batch_size):
+        super().__init__()
+        self.model = model
+        self.batch_size = batch_size
+
+    def forward(self, t_scalar, x):
+        # t_scalar: scalar tensor from odeint
+        t = t_scalar.view(1,1,1,1).expand(self.batch_size,1,1,1)
+        return self.model(x.float(), t.float())
+
+class ODEFuncGraph(torch.nn.Module):
     def __init__(self, neural_network, size_x, size_e, cut_off, max_nodes, distribution, tau_t, loss_function, mu, gumbel, mask):
-        super(ODEFunc, self).__init__()
+        super(ODEFuncGraph, self).__init__()
         self.neural_network = neural_network
         self.size_x = size_x
         self.size_e = size_e
@@ -568,31 +567,12 @@ class ODEFunc(torch.nn.Module):
 
         if self.loss_function == 'mse':
             v_x, v_e = pred.X, pred.E
-            # x_1, e_1 = pred.X, pred.E
-            # v_x = (x_1 - x_t) / (1 - t)
-            # v_e = (e_1 - e_t) / (1 - t)
         else:
             x_1, e_1 = pred.X, pred.E
             x_1, e_1 = torch.softmax(x_1, dim=-1), torch.softmax(e_1, dim=-1)
 
             v_x = (x_1 - x_t) / (1 - t)
             v_e = (e_1 - e_t) / (1 - t)
-
-            # if self.distribution == 'normal' or self.distribution == 'normal_projected':
-            #     v_x = (x_1 - x_t) / (1 - t)
-            #     v_e = (e_1 - e_t) / (1 - t)
-            # if self.distribution == 'simplex':
-            #     x_0, e_0 = (1 / 4) * torch.ones_like(x_1), (1 / 4) * torch.ones_like(e_1)
-            #     gumbel_x = torch.log(x_t / ((1-t) * x_0 + t * x_1) + 1e-8)
-            #     gumbel_e = torch.log(e_t / ((1-t) * e_0 + t * e_1) + 1e-8)
-            #
-            #     f_x = lambda t: torch.softmax((torch.log(t * x_1 + (1-t) * x_0 + 1e-8) + gumbel_x) / 1, dim=-1)
-            #     _, v_x = torch.autograd.functional.jvp(f_x, t, torch.ones_like(t))
-            #
-            #     f_e = lambda t: torch.softmax((torch.log(t * e_1 + (1-t) * e_0 + 1e-8) + gumbel_e), dim=-1)
-            #     _, v_e = torch.autograd.functional.jvp(f_e, t, torch.ones_like(t))
-
-        # e_t[diag], v_e[diag]  = 0, 0
 
         v = torch.cat([v_x.flatten().unsqueeze(-1), v_e.flatten().unsqueeze(-1)], dim=0)
         return v

@@ -10,7 +10,7 @@ from tqdm import tqdm
 from train import train_graph_epoch, train_image_epoch
 from utils import count_parameters, get_loaders, make_molecule, get_smiles, get_GT_model, get_CNN_model
 from torch_ema import ExponentialMovingAverage
-from flow_matching import generate_graphs, eval_and_log
+from flow_matching import generate_graphs, generate_mnist_images_odeint, eval_and_log_molecules, eval_and_log_images
 from rdkit import Chem
 from utils import to_dense
 import numpy as np
@@ -120,18 +120,12 @@ def main(args):
             
             if args.log:
                 wandb.log({
-                    'Train Loss': train_loss,
-                    'Val Loss': val_loss,
+                    'Train Loss': train_loss, 'Val Loss': val_loss,
                     'Learning Rate': optimizer.param_groups[0]['lr']
                 })
 
         if val_loss < best_loss:
             best_loss = val_loss
-
-            # if args.ema > 0:
-            #     with ema.average_parameters():
-            #         best_model = copy.deepcopy(model)
-            # else:
             best_model = copy.deepcopy(model)
 
         lr_scheduler.step()
@@ -140,10 +134,9 @@ def main(args):
         # if (epoch+1) in [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000]:
             if graph_task:
                 generated_mols = generate_graphs(best_model, args.generate_size, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)
-                val_mols = eval_and_log(generated_mols, args.log, smiles, device)
+                val_mols = eval_and_log_molecules(generated_mols, args.log, smiles, device)
 
                 for k in val_mols.keys():
-
                     try:
                         img = Draw.MolsToGridImage(generated_mols[k][:100], molsPerRow=10)
                         time = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
@@ -163,23 +156,8 @@ def main(args):
                         img.save(f'images/{name}_epoch_val_{time}_{k}.png')
                         img.show()
             else:
-                generated_images = generate_graphs(best_model, 10, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)
-                eval_and_log(generated_images, args.log, None, device)
-
-            #
-            #
-            # try:
-            #     img = Draw.MolsToGridImage(generated_mols[:100], molsPerRow=10)
-            #     time = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
-            #     img.save(f'images/{name}_epoch_all_{time}.png')
-            #     img.show()
-            # except:
-            #     continue
-            #
-            # if len(val_mols) > 0:
-            #     img = Draw.MolsToGridImage(val_mols[:100], molsPerRow=10)
-            #     img.save(f'images/{name}_epoch_val_{time}.png')
-            #     img.show()
+                generated_images = generate_mnist_images_odeint(best_model, args.generate_size, device)
+                eval_and_log_images(generated_images, best_model, args.log, test_loader, device)
 
         pbar.set_postfix({'Train loss': train_loss, 'Val loss': val_loss})
 

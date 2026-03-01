@@ -59,7 +59,7 @@ def train_image_epoch(train, model, loader, optimizer, lr_scheduler, warmup_sche
                 ema.update(model.parameters())
         total_loss += loss.item() # * (batch_x.shape[0])
         train_loss = total_loss / len(loader.dataset)
-        print(f'loss: {loss.item()}, train_loss: {train_loss}')
+    print(f'loss: {loss.item()}, train_loss: {train_loss}')
         
     return model, train_loss
 
@@ -70,13 +70,7 @@ def train_graph_epoch(train, model, loader, optimizer, lr_scheduler, warmup_sche
     else:
         model.eval()
 
-    # node_simplex = project_simplex(3)
-    # edge_simplex = project_simplex(3)
-
-    # node_simplex, edge_simplex = node_simplex.to(device), edge_simplex.to(device)
-
     k = 0
-
     for batch in loader:
         if train:
             optimizer.zero_grad()
