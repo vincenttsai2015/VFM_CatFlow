@@ -157,7 +157,7 @@ def main(args):
                         img.show()
             else:
                 generated_images = generate_mnist_images_odeint(best_model, args.generate_size, device)
-                eval_and_log_images(generated_images, best_model, args.log, test_loader, device)
+                eval_and_log_images(generated_images, best_model, test_loader, args.log, device)
 
         pbar.set_postfix({'Train loss': train_loss, 'Val loss': val_loss})
 
