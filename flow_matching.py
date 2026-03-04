@@ -505,17 +505,17 @@ def eval_and_log_images(gen_images, model, test_loader,
     nll = estimate_nll_on_test(model, test_loader, device=device, max_batches=nll_max_batches)
     print(f"[NLL] test NLL (nats/image): {nll:.4f}")
 
-    for k, x_gen in gen_images.items():
-        fid = compute_fid_torchmetrics(x_gen_01=x_gen, test_loader=test_loader, device=device, max_real=max_real, max_fake=max_fake)
-        print(f"For k={k}, FID: {fid:.4f}, NLL(test): {nll:.4f}")
+    
+    fid = compute_fid_torchmetrics(x_gen_01=gen_images[:,0,:,:], test_loader=test_loader, device=device, max_real=max_real, max_fake=max_fake)
+    print(f"FID: {fid:.4f}, NLL(test): {nll:.4f}")
 
-        if log and wandb_run is not None:
-            wandb_run.log({
-                f"FID/k={k}": fid,
-                "NLL_test": nll,
-            })
+    if log and wandb_run is not None:
+        wandb_run.log({
+            f"FID": fid,
+            "NLL_test": nll,
+        })
 
-        results[k] = {"FID": fid, "NLL_test": nll}
+    results = {"FID": fid, "NLL_test": nll}
 
     return results
 
