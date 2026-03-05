@@ -506,7 +506,7 @@ def eval_and_log_images(gen_images, model, test_loader,
     print(f"[NLL] test NLL (nats/image): {nll:.4f}")
 
     
-    fid = compute_fid_torchmetrics(x_gen_01=gen_images[:,0,:,:], test_loader=test_loader, device=device, max_real=max_real, max_fake=max_fake)
+    fid = compute_fid_torchmetrics(x_gen_01=gen_images, test_loader=test_loader, device=device, max_real=max_real, max_fake=max_fake)
     print(f"FID: {fid:.4f}, NLL(test): {nll:.4f}")
 
     if log and wandb_run is not None:
