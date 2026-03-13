@@ -149,12 +149,12 @@ def get_loaders(args):
         from torchvision import datasets, transforms
         transform = transforms.Compose([transforms.ToTensor()])
         # get loaders with transform
-        train_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=True, download=False, transform=transform),
+        train_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=True, download=True, transform=transform),
                                                     batch_size=args.batch_size, shuffle=True, drop_last=True)
-        val_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=False, transform=transform),
+        val_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=True, transform=transform),
                                                     batch_size=args.batch_size, shuffle=False, drop_last=True)
 
-        test_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=False, transform=transform),
+        test_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=True, transform=transform),
                                                     batch_size=args.batch_size, shuffle=False, drop_last=True)
         #
         #
