@@ -172,17 +172,17 @@ def get_loaders(args):
     elif args.task == 'mnist':
         # get mnist
         from torchvision import datasets, transforms
-        binary_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Lambda(lambda x: (x > 0.5).float())
-        ])
+        # binary_transform = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Lambda(lambda x: (x > 0.5).float())
+        # ])
         # get loaders with transform
         train_indices = list(range(50000))
         val_indices = list(range(50000,60000))
         test_indices = list(range(10000))
-        train_ds = BinaryMNIST('data', 'train', indices=train_indices, download=True, transform=binary_transform)
-        val_ds = BinaryMNIST('data', 'valid', indices=val_indices, download=True, transform=binary_transform)
-        test_ds = BinaryMNIST('data', 'test', indices=test_indices, download=True, transform=binary_transform)
+        train_ds = BinaryMNIST('data', 'train', indices=train_indices, download=True)
+        val_ds = BinaryMNIST('data', 'valid', indices=val_indices, download=True)
+        test_ds = BinaryMNIST('data', 'test', indices=test_indices, download=True)
         train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, drop_last=True)
         val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, drop_last=True)
         test_loader = torch.utils.data.DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, drop_last=True)

@@ -40,7 +40,7 @@ def main(args):
             counter[num] += 1
     else:
         for batch in tqdm(train_loader, desc='Counting image pixels'):
-            num = batch[0].shape[1] * batch[0].shape[2]
+            num = batch[0].shape[1]
             counter[num] += 1
 
     counter = counter.to(device)

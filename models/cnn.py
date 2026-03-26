@@ -1,7 +1,9 @@
 import numpy as np
+import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 # Supporting functions and modules (adapted from conv_layers.py for clarity)
 def get_act(nonlinearity='elu'):
@@ -262,6 +264,7 @@ class CNNModel(nn.Module):
 
         for i in range(self.num_layers):
             h = self.dropout(feat.clone())
+            print(f"h shape before time add = {h.shape}")
             # print(f"h shape before time add = {h.shape}")
             # tmp = self.time_layers[i](time_emb)            
             # print(f"projected time shape = {tmp.shape}")
@@ -269,6 +272,7 @@ class CNNModel(nn.Module):
             if not self.clean_data:
                 # print(f"time_emb shape = {time_emb.shape}")
                 time_feat = self.time_layers[i](time_emb).squeeze(1)
+                print(f'time_feat shape = {time_feat.shape}')
                 # h = h + self.time_layers[i](time_emb)[:, :, None]
                 h = h + time_feat[:, :, None]
             if self.cls_free_guidance and not self.classifier:
