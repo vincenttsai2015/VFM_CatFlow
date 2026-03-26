@@ -271,13 +271,12 @@ class CNNModel(nn.Module):
             # print(f"projected time unsqueezed = {tmp[:, :, None].shape}")
             if not self.clean_data:
                 # print(f"time_emb shape = {time_emb.shape}")
-                time_feat = self.time_layers[i](time_emb).squeeze(1)
-                print(f'time_feat shape = {time_feat.shape}')
+                time_feat = self.time_layers[i](time_emb).squeeze(-1)
                 # h = h + self.time_layers[i](time_emb)[:, :, None]
                 h = h + time_feat[:, :, None]
             if self.cls_free_guidance and not self.classifier:
                 # print(f"cls_emb shape = {cls_emb.shape}")
-                cls_feat = self.cls_layers[i](cls_emb).squeeze(1)
+                cls_feat = self.cls_layers[i](cls_emb).squeeze(-1)
                 # h = h + self.cls_layers[i](cls_emb)[:, :, None]
                 h = h + cls_feat[:, :, None]
             h = self.norms[i]((h).permute(0, 2, 1))
