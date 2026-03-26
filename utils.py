@@ -4,6 +4,8 @@ import numpy as np
 import os
 import torch.nn as nn
 # from torchdiffeq import odeint
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
 from torchdiffeq import odeint_adjoint as odeint
 from rdkit import Chem
 from torch_geometric.data import Data, Batch
@@ -80,6 +82,29 @@ def to_dense(x, edge_index, edge_attr, batch, max_nodes):
 
     return PlaceHolder(X=X, E=E, y=None), node_mask
 
+class BinaryMNIST(Dataset):
+    def __init__(self, root, split, indices=None, download=True, flatten=True):
+        self.base_dataset = datasets.MNIST(root=root, train=(split == 'train' or split == 'valid'), download=download)
+        self.indices = indices if indices is not None else list(range(len(self.base_dataset)))
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: (x > 0.5).float())
+        ])
+        self.flatten = flatten
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        real_idx = self.indices[idx]
+        img, label = self.base_dataset[real_idx]   # 這裡拿到的是 PIL image
+        img = self.transform(img) # (1, 28, 28), binary tensor
+        img = img.squeeze(0) # (28, 28)
+        img = torch.stack([img, 1 - img], dim=-1)  # (H, W, 2)
+        if self.flatten:
+            img = img.reshape(img.shape[0] * img.shape[1], 2).long()  # (H*W, 2)
+        return img, label
+
 
 def get_loaders(args):
     if args.task == 'qm9_wo_H' or args.task == 'qm9':
@@ -152,12 +177,15 @@ def get_loaders(args):
             transforms.Lambda(lambda x: (x > 0.5).float())
         ])
         # get loaders with transform
-        train_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=True, download=True, transform=binary_transform),
-                                                    batch_size=args.batch_size, shuffle=True, drop_last=True)
-        val_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=True, transform=binary_transform),
-                                                    batch_size=args.batch_size, shuffle=False, drop_last=True)
-        test_loader = torch.utils.data.DataLoader(datasets.MNIST('data', train=False, download=True, transform=binary_transform),
-                                                    batch_size=args.batch_size, shuffle=False, drop_last=True)
+        train_indices = list(range(50000))
+        val_indices = list(range(50000,60000))
+        test_indices = list(range(10000))
+        train_ds = BinaryMNIST('data', 'train', indices=train_indices, download=True, transform=binary_transform)
+        val_ds = BinaryMNIST('data', 'valid', indices=val_indices, download=True, transform=binary_transform)
+        test_ds = BinaryMNIST('data', 'test', indices=test_indices, download=True, transform=binary_transform)
+        train_loader = torch.utils.data.DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        val_loader = torch.utils.data.DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, drop_last=True)
+        test_loader = torch.utils.data.DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, drop_last=True)
         
         # for x_1, _ in train_loader:
         #     # visualize image
@@ -271,8 +299,8 @@ def get_tau_sched(tau_sched, tau_max=5, tau_min=0.1):
     return tau_rem
 
 def get_CNN_model():
-    from models.cnn import ConvNet
-    model = ConvNet(in_channels=1, ngf=64)
+    from models.cnn import CNNModel
+    model = CNNModel(dim=784, k=2, hidden=128, mode='simplex', num_cls=10, depth=1, dropout=0.0, num_cnn_stacks=1, prior_pseudocount=2.0, cls_expanded_simplex=False, clean_data=False, classifier=False, cls_free_guidance=False)
     return model
 
 def get_GT_model(args, node_feats, edge_feats):
