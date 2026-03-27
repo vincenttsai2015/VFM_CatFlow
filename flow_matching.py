@@ -464,7 +464,7 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
 
     # 反向時間
     t = torch.linspace(1.0, 0.0, ode_steps, device=device)
-    print(f't.shape = {t.shape}')
+    # print(f't.shape = {t.shape}')
 
     total_nll = 0.0
     total_n = 0
