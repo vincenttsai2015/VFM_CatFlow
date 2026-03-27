@@ -362,7 +362,7 @@ def _to_uint8_3ch(x01: torch.Tensor) -> torch.Tensor:
 
 @torch.no_grad()
 def compute_fid_torchmetrics(
-    x_gen_01: torch.Tensor,      # [N,1,28,28] float in [0,1]
+    x_gen_01: torch.Tensor,      # [N,28*28,2] float in [0,1]
     test_loader,
     device,
     max_real: int = 10_000,
@@ -386,8 +386,11 @@ def compute_fid_torchmetrics(
     seen = 0
     for x, _ in test_loader:
         x = x.to(device).float()
+        print(f'x shape = {x.shape}')
+        x01 = torch.argmax(x, dim=-1).float()
+        print(f'x01 shape = {x01.shape}')
         # 你資料如果是 Normalize 過的，請先反正規化到 [0,1]
-        x01 = x
+        x01 = x01.reshape(x01.shape[0], 1, 28, 28)
         x_u8 = _to_uint8_3ch(x01)
         fid.update(x_u8, real=True)
         seen += x_u8.size(0)
@@ -397,6 +400,8 @@ def compute_fid_torchmetrics(
     # fake
     x_gen_01 = x_gen_01.to(device).float()
     print(f'x_gen_01 shape = {x_gen_01.shape}')
+    x_gen_01 = torch.argmax(x_gen_01, dim=-1).float()
+    x_gen_01 = x_gen_01.reshape(x_gen_01.shape[0], 1, 28, 28)
     if x_gen_01.size(0) > max_fake:
         x_gen_01 = x_gen_01[:max_fake]
     fid.update(_to_uint8_3ch(x_gen_01), real=False)
@@ -413,7 +418,7 @@ def _hutch_divergence(v, x, eps):
     # (v * eps).sum() 的梯度 wrt x = J_v^T eps
     inner = (v * eps).sum()
     grad = torch.autograd.grad(inner, x, create_graph=False, retain_graph=False)[0]
-    print(f'grad shape = {grad.shape}')
+    # print(f'grad shape = {grad.shape}')
     div_est = (grad * eps).sum(dim=(1,2))  # per-sample
     return div_est
 
@@ -430,11 +435,11 @@ class CNFLogProbODE(torch.nn.Module):
 
     def forward(self, t, state):
         x, logp = state  # x: [B, 28*28, 2], logp: [B]
-        print(f'[CNFLogProbODE] t={t.item():.4f}, x shape={x.shape}, logp shape={logp.shape}')
+        # print(f'[CNFLogProbODE] t={t.item():.4f}, x shape={x.shape}, logp shape={logp.shape}')
         x = x.requires_grad_(True)
 
         t_in = t.view(1,1,1).expand(x.size(0),1,1)
-        print(f't_in shape = {t_in.shape}')
+        # print(f't_in shape = {t_in.shape}')
         v = self.model(x, t_in)
 
         eps = torch.randn_like(x)
@@ -471,7 +476,7 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
 
         x1 = x1.to(device).float()
         B = x1.size(0)
-        print(f'x1 shape = {x1.shape}')
+        # print(f'x1 shape = {x1.shape}')
 
         # 如果你的 test x1 不是在模型生成空間（例如 Normalize 過），這裡要一致
         # x1_model = (x1 - mean)/std 或 x1_model = x1*2-1 等

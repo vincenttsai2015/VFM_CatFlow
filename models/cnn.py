@@ -250,7 +250,7 @@ class CNNModel(nn.Module):
             self.cls_layers = nn.ModuleList([Dense(self.hidden, self.hidden) for _ in range(self.num_layers)])
 
     def forward(self, x, t: Tensor, cls = None, return_embedding=False):
-        print(f"input x shape = {x.shape}")
+        # print(f"input x shape = {x.shape}")
         if self.clean_data:
             feat = self.linear(x)
             feat = feat.permute(0, 2, 1)
@@ -264,7 +264,6 @@ class CNNModel(nn.Module):
 
         for i in range(self.num_layers):
             h = self.dropout(feat.clone())
-            print(f"h shape before time add = {h.shape}")
             # print(f"h shape before time add = {h.shape}")
             # tmp = self.time_layers[i](time_emb)            
             # print(f"projected time shape = {tmp.shape}")
@@ -272,7 +271,7 @@ class CNNModel(nn.Module):
             if not self.clean_data:
                 # print(f"time_emb shape = {time_emb.shape}")
                 time_feat = self.time_layers[i](time_emb).squeeze(1)
-                print(f'time_feat shape = {time_feat.shape}')
+                # print(f'time_feat shape = {time_feat.shape}')
                 time_feat = time_feat.transpose(1, 2)
                 # h = h + self.time_layers[i](time_emb)[:, :, None]
                 h = h + time_feat
