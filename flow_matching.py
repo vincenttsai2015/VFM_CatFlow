@@ -396,6 +396,7 @@ def compute_fid_torchmetrics(
 
     # fake
     x_gen_01 = x_gen_01.to(device).float()
+    print(f'x_gen_01 shape = {x_gen_01.shape}')
     if x_gen_01.size(0) > max_fake:
         x_gen_01 = x_gen_01[:max_fake]
     fid.update(_to_uint8_3ch(x_gen_01), real=False)
@@ -465,10 +466,14 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
 
         x1 = x1.to(device).float()
         B = x1.size(0)
+        print(f'x1 shape = {x1.shape}')
 
         # 如果你的 test x1 不是在模型生成空間（例如 Normalize 過），這裡要一致
         # x1_model = (x1 - mean)/std 或 x1_model = x1*2-1 等
-        x1_model = x1
+        x1_model = torch.stack([x1, 1.0 - x1], dim=1)  # 假設你的模型直接在 [0,1] 上訓練，那就不用轉換了
+        print(f'x1_model shape before reshape = {x1_model.shape}')
+        x1_model = x1_model.reshape(x1_model.size(0), x1_model.size(2) * x1_model.size(3), x1_model.size(1))  
+        print(f'x1_model shape after reshape = {x1_model.shape}')
 
         logp1_init = torch.zeros(B, device=device)
 
@@ -527,7 +532,7 @@ class ODEFuncImage(torch.nn.Module):
 
     def forward(self, t_scalar, x):
         # t_scalar: scalar tensor from odeint
-        t = t_scalar.view(1,1,1,1).expand(self.batch_size,1,1,1)
+        t = t_scalar.view(1,1,1).expand(self.batch_size,1,1)
         return self.model(x.float(), t.float())
 
 class ODEFuncGraph(torch.nn.Module):
