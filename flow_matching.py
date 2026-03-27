@@ -113,14 +113,14 @@ def hyperplane_proj(seq):
 def generate_mnist_images_odeint(model, num_images, device, steps=2, method="rk4"):
     model.eval()
 
-    x0 = torch.randn(num_images, 1, 28, 28, device=device)
+    x0 = torch.randn(num_images, 28*28, 2, device=device)
 
     # odeint 的 t 是「時間點列表」，不是 step_size；點越多越細
     # 例如 0->1 切 101 個點，最後取 [-1]
     t = torch.linspace(0.0, 1.0, 101, device=device)
 
     func = ODEFuncImage(model, batch_size=num_images)
-    sol = odeint(func, y0=x0, t=t, method=method)   # sol: [T,B,1,28,28]
+    sol = odeint(func, y0=x0, t=t, method=method)   # sol: [T,B,28*28,2]
     x1 = sol[-1]
 
     return x1
