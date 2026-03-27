@@ -377,7 +377,7 @@ def compute_fid_torchmetrics(
         from torchmetrics.image.fid import FrechetInceptionDistance
     except Exception as e:
         raise ImportError(
-            "需要 torchmetrics：pip install torchmetrics"
+            "torchmetrics needed: pip install torchmetrics"
         ) from e
 
     fid = FrechetInceptionDistance(feature=2048).to(device)
@@ -460,6 +460,7 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
     total_nll = 0.0
     total_n = 0
 
+    print('Starting NLL estimation on test set...')
     for bi, (x1, _) in enumerate(test_loader):
         if bi >= max_batches:
             break
@@ -470,18 +471,18 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
 
         # 如果你的 test x1 不是在模型生成空間（例如 Normalize 過），這裡要一致
         # x1_model = (x1 - mean)/std 或 x1_model = x1*2-1 等
-        x1_model = torch.stack([x1, 1.0 - x1], dim=1)  # 假設你的模型直接在 [0,1] 上訓練，那就不用轉換了
-        print(f'x1_model shape before reshape = {x1_model.shape}')
-        x1_model = x1_model.reshape(x1_model.size(0), x1_model.size(2) * x1_model.size(3), x1_model.size(1))  
-        print(f'x1_model shape after reshape = {x1_model.shape}')
+        # x1_model = torch.stack([x1, 1.0 - x1], dim=1)  # 假設你的模型直接在 [0,1] 上訓練，那就不用轉換了
+        # print(f'x1_model shape before reshape = {x1_model.shape}')
+        # x1_model = x1_model.reshape(x1_model.size(0), x1_model.size(2) * x1_model.size(3), x1_model.size(1))  
+        # print(f'x1_model shape after reshape = {x1_model.shape}')
 
         logp1_init = torch.zeros(B, device=device)
 
         # 需要梯度來算 divergence，所以這段不能用 @torch.no_grad()
         # 我們在外層 no_grad 了，這裡局部開啟 grad：
         with torch.enable_grad():
-            x0, logp0 = odeint(ode_func, (x1_model, logp1_init), t, method=method)
-            x0 = x0[-1]      # [B,1,28,28]
+            x0, logp0 = odeint(ode_func, (x1, logp1_init), t, method=method)
+            x0 = x0[-1]      # [B,28*28,2]
             logp0 = logp0[-1]  # [B]
 
             # base log p0 for standard Normal
