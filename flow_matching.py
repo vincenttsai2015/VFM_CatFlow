@@ -428,10 +428,12 @@ class CNFLogProbODE(torch.nn.Module):
         self.model = model
 
     def forward(self, t, state):
-        x, logp = state  # x: [B,1,28,28], logp: [B]
+        x, logp = state  # x: [B, 28*28, 2], logp: [B]
+        print(f'[CNFLogProbODE] t={t.item():.4f}, x shape={x.shape}, logp shape={logp.shape}')
         x = x.requires_grad_(True)
 
-        t_in = t.view(1,1,1,1).expand(x.size(0),1,1,1)
+        t_in = t.view(1,1,1).expand(x.size(0),1,1)
+        print(f't_in shape = {t_in.shape}')
         v = self.model(x, t_in)
 
         eps = torch.randn_like(x)
@@ -456,6 +458,7 @@ def estimate_nll_on_test(model, test_loader, device, max_batches: int = 50, ode_
 
     # 反向時間
     t = torch.linspace(1.0, 0.0, ode_steps, device=device)
+    print(f't.shape = {t.shape}')
 
     total_nll = 0.0
     total_n = 0
