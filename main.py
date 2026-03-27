@@ -130,7 +130,7 @@ def main(args):
 
         lr_scheduler.step()
 
-        if (epoch+1) % 100 == 0:
+        if (epoch+1) % 2 == 0:
         # if (epoch+1) in [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000]:
             if graph_task:
                 generated_mols = generate_graphs(best_model, args.generate_size, node_feats, edge_feats, max_nodes, device, name, args.mu, args.distribution, args.tau_sched, args.loss_function, counter, args.small_model)

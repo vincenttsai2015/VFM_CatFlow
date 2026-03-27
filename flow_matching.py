@@ -413,7 +413,8 @@ def _hutch_divergence(v, x, eps):
     # (v * eps).sum() 的梯度 wrt x = J_v^T eps
     inner = (v * eps).sum()
     grad = torch.autograd.grad(inner, x, create_graph=False, retain_graph=False)[0]
-    div_est = (grad * eps).sum(dim=(1,2,3))  # per-sample
+    print(f'grad shape = {grad.shape}')
+    div_est = (grad * eps).sum(dim=(1,2))  # per-sample
     return div_est
 
 
